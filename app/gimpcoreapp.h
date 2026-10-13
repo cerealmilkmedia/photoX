@@ -17,7 +17,7 @@
 #pragma once
 
 
-#define GIMP_APPLICATION_ID "org.gimp.GIMP"
+#define GIMP_APPLICATION_ID "io.github.cerealmilkmedia.PhotoX"
 
 enum
 {

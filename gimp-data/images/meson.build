@@ -7,21 +7,12 @@ data_env.append('GIMP_TESTING_PLUG_INS', 'common/file-png', separator: ':')
 
 ## Splash Image and Welcome Dialog ##
 
-splash = custom_target('gimp-splash.png',
-                       input : [ 'export-splash.py' ],
-                       output: [ 'gimp-splash.png', ],
-                       depends: [ gimp_exe_depends ],
-                       command: [ gimp_exe, '-nidfs',
-                                  files('gimp-splash.xcf.xz'),
-                                  '--batch-interpreter', 'python-fu-eval',
-                                  '-b', '-', '--quit'],
-                       feed: true,
-                       console: true, #needed to not get disordered and lost on fast ninja output and
-                                      #to spot very hard-to-debug stuckness (see #11385 and #16202)
-                       build_by_default: true,
-                       env: data_env,
-                       install_dir: gimpdatadir / 'images',
-                       install: true)
+# PhotoX: install the pre-rendered PhotoX splash (see tools/photox/make-splash.py)
+# under the file name the application loads, instead of exporting GIMP's
+# gimp-splash.xcf.xz at build time.
+install_data('photox-splash.png',
+             rename: 'gimp-splash.png',
+             install_dir: gimpdatadir / 'images')
 
 ## Windows Installer's Splash Image and Intro Banner ##
 

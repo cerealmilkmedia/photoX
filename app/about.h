@@ -18,16 +18,18 @@
 #pragma once
 
 
+/* PhotoX: product names are not translated. */
 #define GIMP_ACRONYM \
-  _("GIMP")
+  "PhotoX"
 
 #define GIMP_NAME \
-  _("GNU Image Manipulation Program")
+  "PhotoX Image Editor"
 
 /* The year of the last commit (UTC) will be inserted into this string. */
 #define GIMP_COPYRIGHT \
   _("Copyright © 1995-%s\n" \
-    "Spencer Kimball, Peter Mattis and the GIMP Development Team")
+    "Spencer Kimball, Peter Mattis and the GIMP Development Team\n" \
+    "PhotoX is based on GIMP")
 
 /* TRANSLATORS: do not end the license URL with a dot, because it would
  * be in the link. Because of technical limitations, make sure the URL
@@ -35,15 +37,15 @@
  * Cf. bug 762282.
  */
 #define GIMP_LICENSE \
-  _("GIMP is free software: you can redistribute it and/or modify it "   \
+  _("PhotoX is free software: you can redistribute it and/or modify it "   \
     "under the terms of the GNU General Public License as published by " \
     "the Free Software Foundation; either version 3 of the License, or " \
     "(at your option) any later version."                                \
     "\n\n"                                                               \
-    "GIMP is distributed in the hope that it will be useful, "           \
+    "PhotoX is distributed in the hope that it will be useful, "           \
     "but WITHOUT ANY WARRANTY; without even the implied warranty of "    \
     "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the "     \
     "GNU General Public License for more details."                       \
     "\n\n"                                                               \
     "You should have received a copy of the GNU General Public License " \
-    "along with GIMP. If not, see: https://www.gnu.org/licenses/")
+    "along with PhotoX. If not, see: https://www.gnu.org/licenses/")

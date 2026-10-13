@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=GNU Image Manipulation Program
+Name=PhotoX
 GenericName=Image Editor
 Comment=Create images and edit photographs
 # TRANSLATORS: Search terms to find this application.
@@ -10,10 +10,10 @@ Comment=Create images and edit photographs
 # 3. Keep "GIMP" in the list as-is so that people can search with the
 #    original acronym too, though you may add translated version of the
 #    name when relevant (it's OK if a localization has more keywords).
-Keywords=GIMP;graphic;design;illustration;painting;
+Keywords=PhotoX;GIMP;photo;graphic;design;illustration;painting;
 Exec=@GIMP_COMMAND@ %U
 TryExec=gimp-@GIMP_APP_VERSION@
-Icon=gimp
+Icon=photox
 Terminal=false
 Categories=Graphics;2DGraphics;RasterGraphics;GTK;
 StartupNotify=true

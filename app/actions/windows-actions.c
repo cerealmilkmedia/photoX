@@ -142,7 +142,7 @@ static const GimpToggleActionEntry windows_toggle_actions[] =
 
   { "windows-use-single-window-mode", NULL,
     NC_("windows-action", "Single-Window _Mode"), NULL, { NULL },
-    NC_("windows-action", "When enabled, GIMP is in a single-window mode."),
+    NC_("windows-action", "When enabled, PhotoX is in a single-window mode."),
     windows_use_single_window_mode_cmd_callback,
     TRUE,
     GIMP_HELP_WINDOWS_USE_SINGLE_WINDOW_MODE }

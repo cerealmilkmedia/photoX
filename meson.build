@@ -19,8 +19,8 @@ warnings = []
 ################################################################################
 # Project info
 
-prettyname = 'GIMP'
-full_name  = 'GNU Image Manipulation Program'
+prettyname = 'PhotoX'
+full_name  = 'PhotoX Image Editor'
 
 # General version
 gimp_version = meson.project_version()
@@ -1702,8 +1702,8 @@ conf.set_quoted('GIMP_PKGCONFIG_VERSION', gimp_api_version)
 # Possibly change default gimpdir from $XDG_CONFIG_HOME/GIMP/gimp_user_version
 gimpdir = get_option('gimpdir')
 if gimpdir == ''
-  # Default value
-  gimpdir = meson.project_name().to_upper()
+  # Default value. PhotoX keeps its settings apart from any installed GIMP.
+  gimpdir = 'PhotoX'
 endif
 
 project_subdir = meson.project_name() / gimp_api_version
