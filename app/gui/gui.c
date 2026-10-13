@@ -186,7 +186,7 @@ gui_abort (const gchar *abort_message)
 
   g_return_if_fail (abort_message != NULL);
 
-  dialog = gimp_dialog_new (_("GIMP Message"), "gimp-abort",
+  dialog = gimp_dialog_new (_("PhotoX Message"), "gimp-abort",
                             NULL, GTK_DIALOG_MODAL, NULL, NULL,
 
                             _("_OK"), GTK_RESPONSE_OK,
@@ -347,7 +347,7 @@ gui_recover (gint n_recoveries)
   gtk_widget_set_visible (box, TRUE);
 
   gimp_message_box_set_primary_text (GIMP_MESSAGE_BOX (box),
-                                     _("Eeek! It looks like GIMP recovered from a crash!"));
+                                     _("Eeek! It looks like PhotoX recovered from a crash!"));
 
   gimp_message_box_set_text (GIMP_MESSAGE_BOX (box),
                              /* TRANSLATORS: even if English singular form does

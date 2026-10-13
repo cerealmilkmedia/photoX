@@ -265,7 +265,7 @@ progress_error_dialog (GimpProgress *progress)
 
   if (! dialog)
     {
-      dialog = gimp_error_dialog_new (_("GIMP Message"));
+      dialog = gimp_error_dialog_new (_("PhotoX Message"));
 
       g_object_set_data (G_OBJECT (progress), "gimp-error-dialog", dialog);
 
