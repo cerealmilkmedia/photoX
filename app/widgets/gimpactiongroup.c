@@ -42,6 +42,7 @@
 #include "gimpprocedureaction.h"
 #include "gimpradioaction.h"
 #include "gimpstringaction.h"
+#include "photox-shortcuts.h"
 #include "gimptoggleaction.h"
 
 #include "gimp-intl.h"
@@ -387,6 +388,10 @@ gimp_action_group_add_action_with_accel (GimpActionGroup    *group,
       group->actions = g_list_prepend (group->actions, g_object_ref (action));
 
       g_signal_emit_by_name (group, "action-added", gimp_action_get_name (action));
+
+      /* PhotoX: use Photoshop-style default shortcuts. */
+      accelerators = photox_shortcuts_get_default (gimp_action_get_name (action),
+                                                   accelerators);
 
       if ((accelerators != NULL && accelerators[0] != NULL &&
            g_strcmp0 (accelerators[0], "") != 0))

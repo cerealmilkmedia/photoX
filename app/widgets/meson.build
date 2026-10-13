@@ -269,6 +269,8 @@ libappwidgets_sources = [
   'gimpwindow.c',
   'gimpwindowstrategy.c',
 
+  'photox-shortcuts.c',
+
   'widgets-enums.c',
   stamp_widgets_enums,
 
