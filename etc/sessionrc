@@ -1,9 +1,13 @@
-# GIMP sessionrc
-# 
+# PhotoX sessionrc
+#
+# Default window layout, modeled on Photoshop's "Essentials" workspace:
+# a slim tool column on the left and panel stacks on the right
+# (Color / Brushes, Tool Options / History, Layers / Channels / Paths).
+#
 # This file takes session-specific info (that is info, you want to keep
-# between two GIMP sessions).  You are not supposed to edit it manually, but
+# between two sessions).  You are not supposed to edit it manually, but
 # of course you can do.  The sessionrc will be entirely rewritten every time
-# you quit GIMP.  If this file isn't found, defaults are used.
+# you quit PhotoX.  If this file isn't found, defaults are used.
 
 (session-info "toplevel"
     (factory-entry "gimp-empty-image-window")
@@ -12,36 +16,22 @@
 (session-info "toplevel"
     (factory-entry "gimp-single-image-window")
     (position 0 0)
-    (size 800 600)
+    (size 1280 800)
     (open-on-exit)
     (aux-info
-        (left-docks-width "188")
-        (right-docks-width "205")
-        (maximized "no"))
+        (left-docks-width "76")
+        (right-docks-width "300")
+        (maximized "yes"))
     (gimp-toolbox
-        (side left)
-        (book
-            (current-page 0)
-            (dockable "gimp-tool-options"
-                (tab-style automatic)
-                (aux-info
-                    (show-button-bar "true")))
-            (dockable "gimp-device-status"
-                (tab-style automatic)
-                (aux-info
-                    (show-button-bar "true")))
-            (dockable "gimp-undo-history"
-                (tab-style automatic)
-                (aux-info
-                    (show-button-bar "true")))
-            (dockable "gimp-image-list"
-                (tab-style automatic)
-                (aux-info
-                    (show-button-bar "true")))))
+        (side left))
     (gimp-dock
         (side right)
         (book
             (current-page 0)
+            (dockable "gimp-color-editor"
+                (tab-style automatic)
+                (aux-info
+                    (show-button-bar "true")))
             (dockable "gimp-brush-grid"
                 (tab-style automatic)
                 (aux-info
@@ -49,17 +39,24 @@
             (dockable "gimp-pattern-grid"
                 (tab-style automatic)
                 (aux-info
-                    (show-button-bar "true")))
-            (dockable "gimp-font-list"
+                    (show-button-bar "true"))))
+        (book
+            (position 220)
+            (current-page 0)
+            (dockable "gimp-tool-options"
                 (tab-style automatic)
                 (aux-info
                     (show-button-bar "true")))
-            (dockable "gimp-document-list"
+            (dockable "gimp-undo-history"
+                (tab-style automatic)
+                (aux-info
+                    (show-button-bar "true")))
+            (dockable "gimp-histogram-editor"
                 (tab-style automatic)
                 (aux-info
                     (show-button-bar "true"))))
         (book
-            (position 336)
+            (position 280)
             (current-page 0)
             (dockable "gimp-layer-list"
                 (tab-style automatic)
@@ -78,8 +75,3 @@
                     (show-button-bar "true"))))))
 
 (hide-docks no)
-(single-window-mode yes)
-(tabs-position 0)
-(last-tip-shown 0)
-
-# end of sessionrc

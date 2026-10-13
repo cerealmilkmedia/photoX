@@ -9,32 +9,84 @@ interface closer to what Photoshop users expect.
 
 ## Status
 
-Early stage. The tree currently contains an unmodified import of
-**GIMP 3.2.6** (see [UPSTREAM.md](UPSTREAM.md)). PhotoX-specific changes are
-layered on top in separate commits.
+Early stage, based on **GIMP 3.2.6** (see [UPSTREAM.md](UPSTREAM.md)).
+PhotoX-specific changes are layered on top in separate commits.
 
 ## Roadmap
 
-- [ ] Rebrand: application name, icons, splash screen, `.desktop` file
-- [ ] Photoshop-style default keyboard shortcuts
-- [ ] Single-window layout and panel arrangement modeled on Photoshop
-- [ ] Theme tuned to match a Photoshop-like dark UI
+- [x] Rebrand: application name, About and Welcome dialogs, logo, app icon,
+      splash screen, `.desktop` entry, application ID, settings folder
+      (`~/.config/PhotoX`)
+- [x] Photoshop-style default keyboard shortcuts (see below)
+- [x] Single-window layout with Photoshop-like panel arrangement
+- [x] Dark theme tuned toward Photoshop's greys
+- [ ] Horizontal tool options bar under the menu (Photoshop's "Options bar")
+- [ ] Rename remaining "GIMP" strings (menus, plug-ins, translations)
 - [ ] Tool naming and grouping familiar to Photoshop users
+
+## Keyboard shortcuts
+
+PhotoX ships Photoshop-style defaults. They are defined in one table,
+[`app/widgets/photox-shortcuts.c`](app/widgets/photox-shortcuts.c); anything
+not listed there keeps its GIMP default. Users can still change any shortcut
+in *Edit → Keyboard Shortcuts*.
+
+| Key | Tool | Key | Tool |
+|-----|------|-----|------|
+| V | Move | B / Shift+B | Paintbrush / Pencil |
+| M / Shift+M | Rectangle / Ellipse select | S | Clone |
+| L / Shift+L | Free select (lasso) / Scissors | J | Heal |
+| W / Shift+W | Fuzzy select (magic wand) / Foreground select | E | Eraser |
+| C | Crop | G / Shift+G | Gradient / Bucket fill |
+| I / Shift+I | Color picker / Measure | O | Dodge / Burn |
+| P | Paths (pen) | T | Text |
+| Z | Zoom | Q | Quick mask |
+| Ctrl+T | Unified transform (free transform) | Ctrl+Shift+X | Warp transform (liquify) |
+
+| Shortcut | Command | Shortcut | Command |
+|----------|---------|----------|---------|
+| Ctrl+Shift+Z | Redo | Ctrl+J | Duplicate layer |
+| Ctrl+D | Deselect | Ctrl+E | Merge down |
+| Ctrl+Shift+I | Invert selection | Ctrl+Shift+E | Merge visible |
+| Ctrl+I | Invert colors | Ctrl+G | New layer group |
+| Ctrl+L | Levels | Ctrl+M | Curves |
+| Ctrl+U | Hue-Saturation | Ctrl+B | Color balance |
+| Ctrl+Shift+U | Desaturate | Ctrl+Alt+I / Ctrl+Alt+C | Image size / Canvas size |
+| Ctrl+0 | Fit on screen | Ctrl+1 | 100% |
+| Ctrl+= / Ctrl+- | Zoom in / out | Ctrl+R | Rulers |
+| Ctrl+' / Ctrl+; | Grid / Guides | Ctrl+H | Show selection |
+| Alt+Backspace / Ctrl+Backspace | Fill with FG / BG color | F5 / F6 / F7 | Brushes / Colors / Layers panels |
+| Ctrl+Alt+E | Export (overwrite last export) | Ctrl+Alt+Shift+W | Export as |
+
+After editing the table, check for clashes with:
+
+```sh
+python3 tools/photox/list-shortcuts.py --check
+```
 
 ## Building
 
-PhotoX builds exactly like GIMP 3.2, using Meson and Ninja:
+PhotoX builds like GIMP 3.2 (Meson + Ninja). On Debian/Ubuntu, one script
+installs the system packages and builds the newer babl and GEGL that GIMP 3.2
+needs (into `/opt/photox` by default):
 
 ```sh
-meson setup _build
+tools/photox/setup-deps.sh
+source tools/photox/env.sh
+meson setup _build -Dprefix="$PHOTOX_PREFIX"
 ninja -C _build
-ninja -C _build install   # optional
+ninja -C _build install
+gimp-3.2     # starts PhotoX
 ```
 
-Key dependencies include babl, GEGL, GTK 3, GLib, Cairo, Pango and
-PyGObject. See `INSTALL.in` and GIMP's developer documentation for the full
-list and versions:
-<https://developer.gimp.org/core/setup/build/>
+The executable keeps GIMP's name (`gimp-3.2`) for now, so plug-ins and
+scripts written for GIMP keep working.
+
+Claude Code cloud sessions run `.claude/hooks/session-start.sh`, which does
+the dependency and configure steps automatically.
+
+The splash screen is a committed PNG; regenerate it after design changes with
+`python3 tools/photox/make-splash.py`.
 
 ## License
 

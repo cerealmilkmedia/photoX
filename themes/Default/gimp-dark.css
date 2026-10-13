@@ -1,4 +1,5 @@
-/* Dark variant for the Default theme for GIMP 3.0 */
+/* Dark variant for the Default theme for GIMP 3.0.
+ * PhotoX: panel colors tuned toward the flatter, darker greys of Photoshop. */
 
 /* Hint for debugging themes:
  * first enable the GTK inspector with
@@ -9,7 +10,7 @@
 
 /* Basic foreground, background and border colors. */
 @define-color fg-color               rgb(220,220,220);
-@define-color bg-color               rgb(60,60,60);
+@define-color bg-color               rgb(50,50,50);
 @define-color border-color           rgb(26,26,26);
 
 /********* Variants for foreground colors *********/
@@ -25,12 +26,12 @@
 /********* Variants for background colors *********/
 
 /* Background color for hovered items to "stick out". */
-@define-color hover-color            rgb(100,100,100);
+@define-color hover-color            rgb(78,78,78);
 /* Background color when we want widgets-in-widgets to differentiate. It
  * will usually be "less extreme", i.e. darker on a light theme, or
  * lighter on a dark theme.
  */
-@define-color widget-bg-color        rgb(42,42,42);
+@define-color widget-bg-color        rgb(38,38,38);
 /* Color for selected items, in particular when their usual background
  * color is @widget-bg-color or @bg-color. It will usually be lighter on
  * a light theme, or darker on a dark theme.
@@ -39,12 +40,12 @@
 
 /* Background color more extreme in the theme tendency, i.e. darker on a
  * dark theme, ligther on a light theme. */
-@define-color extreme-bg-color       rgb(36,36,36);
+@define-color extreme-bg-color       rgb(40,40,40);
 /* Color for a selected item to "stick out" when @extreme-bg-color is
  * used. It will usually be darker than @bg-color on a light theme,
  * lighter on a dark theme.
  */
-@define-color extreme-selected-color rgb(55,55,55);
+@define-color extreme-selected-color rgb(62,62,62);
 
 /********* Variants for border colors *********/
 
@@ -57,7 +58,7 @@
 /********* Colors for special cases *********/
 
 @define-color scrollbar-slider-color rgb(140,140,140);
-@define-color scrollbar-trough-color rgb(60,60,60);
+@define-color scrollbar-trough-color rgb(50,50,50);
 
 @define-color ruler-color            rgba(35,35,35,0.3);
 
