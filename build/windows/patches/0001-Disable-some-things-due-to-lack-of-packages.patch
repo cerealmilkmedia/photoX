@@ -1,0 +1,425 @@
+From 59a12185b73f9b1e0b0d088f1c7a32eb5a020849 Mon Sep 17 00:00:00 2001
+From: Bruno Lopes <brunvonlope@outlook.com>
+Date: Sun, 5 Jul 2026 17:56:35 -0300
+Subject: [PATCH] Disable some things due to lack of packages
+
+---
+ app/core/gimp.c                         |  7 ----
+ app/core/meson.build                    |  3 --
+ app/dialogs/dialogs-constructors.c      |  9 -----
+ app/dialogs/dialogs.c                   |  2 -
+ app/dialogs/meson.build                 |  1 -
+ app/file-data/file-data.c               | 51 -------------------------
+ app/file-data/meson.build               |  1 -
+ app/plug-in/gimppluginmanager-restore.c | 35 -----------------
+ app/widgets/meson.build                 |  2 -
+ devel-docs/meson.build                  |  2 +-
+ libgimp/meson.build                     |  4 +-
+ meson.build                             | 39 ++++---------------
+ plug-ins/meson.build                    |  9 -----
+ 13 files changed, 12 insertions(+), 153 deletions(-)
+
+diff --git a/app/core/gimp.c b/app/core/gimp.c
+index bba1e86608..be367be104 100644
+--- a/app/core/gimp.c
++++ b/app/core/gimp.c
+@@ -319,7 +319,6 @@ gimp_constructed (GObject *object)
+ 
+   gimp_paint_init (gimp);
+ 
+-  gimp->extension_manager = gimp_extension_manager_new (gimp);
+   gimp->plug_in_manager   = gimp_plug_in_manager_new (gimp);
+   gimp->pdb               = gimp_pdb_new (gimp);
+ 
+@@ -328,11 +327,6 @@ gimp_constructed (GObject *object)
+ 
+   /*  create user and default context  */
+   gimp_contexts_init (gimp);
+-
+-  /* Initialize the extension manager early as its contents may be used
+-   * at the very start (e.g. the splash image).
+-   */
+-  gimp_extension_manager_initialize (gimp->extension_manager);
+ }
+ 
+ static void
+@@ -594,7 +588,6 @@ gimp_real_exit (Gimp     *gimp,
+     g_print ("EXIT: %s\n", G_STRFUNC);
+ 
+   gimp_plug_in_manager_exit (gimp->plug_in_manager);
+-  gimp_extension_manager_exit (gimp->extension_manager);
+   gimp_modules_unload (gimp);
+ 
+   gimp_data_factories_save (gimp);
+diff --git a/app/core/meson.build b/app/core/meson.build
+index f96f333fb6..72f1fd5c42 100644
+--- a/app/core/meson.build
++++ b/app/core/meson.build
+@@ -125,9 +125,6 @@ libappcore_sources = [
+   'gimpdynamics.c',
+   'gimpdynamicsoutput.c',
+   'gimperror.c',
+-  'gimpextension-error.c',
+-  'gimpextension.c',
+-  'gimpextensionmanager.c',
+   'gimpfilloptions.c',
+   'gimpfilter.c',
+   'gimpfilteredcontainer.c',
+diff --git a/app/dialogs/dialogs-constructors.c b/app/dialogs/dialogs-constructors.c
+index dc0b1781ef..b629996158 100644
+--- a/app/dialogs/dialogs-constructors.c
++++ b/app/dialogs/dialogs-constructors.c
+@@ -148,15 +148,6 @@ dialogs_preferences_get (GimpDialogFactory *factory,
+   return preferences_dialog_create (context->gimp);
+ }
+ 
+-GtkWidget *
+-dialogs_extensions_get (GimpDialogFactory *factory,
+-                        GimpContext       *context,
+-                        GimpUIManager     *ui_manager,
+-                        gint               view_size)
+-{
+-  return extensions_dialog_new (context->gimp);
+-}
+-
+ GtkWidget *
+ dialogs_keyboard_shortcuts_get (GimpDialogFactory *factory,
+                                 GimpContext       *context,
+diff --git a/app/dialogs/dialogs.c b/app/dialogs/dialogs.c
+index 26f9c67963..61a3ace0a8 100644
+--- a/app/dialogs/dialogs.c
++++ b/app/dialogs/dialogs.c
+@@ -296,8 +296,6 @@ static const GimpDialogFactoryEntry entries[] =
+             dialogs_close_all_get,          TRUE, FALSE, FALSE),
+   TOPLEVEL ("gimp-quit-dialog",
+             dialogs_quit_get,               TRUE, FALSE, FALSE),
+-  TOPLEVEL ("gimp-extensions-dialog",
+-            dialogs_extensions_get,         TRUE, TRUE,  TRUE),
+ 
+   /*  docks  */
+   DOCK ("gimp-dock",
+diff --git a/app/dialogs/meson.build b/app/dialogs/meson.build
+index 672cd934eb..d49a1958bc 100644
+--- a/app/dialogs/meson.build
++++ b/app/dialogs/meson.build
+@@ -22,7 +22,6 @@ libappdialogs_sources = [
+   'data-delete-dialog.c',
+   'dialogs-constructors.c',
+   'dialogs.c',
+-  'extensions-dialog.c',
+   'file-open-dialog.c',
+   'file-open-location-dialog.c',
+   'file-save-dialog.c',
+diff --git a/app/file-data/file-data.c b/app/file-data/file-data.c
+index 1f2bb849a7..9f35f7cf80 100644
+--- a/app/file-data/file-data.c
++++ b/app/file-data/file-data.c
+@@ -438,57 +438,6 @@ file_data_init (Gimp *gimp)
+ 
+   gimp_plug_in_manager_add_procedure (gimp->plug_in_manager, proc);
+   g_object_unref (procedure);
+-
+-  /*  file-gex-load  */
+-  file = g_file_new_for_path ("file-gex-load");
+-  procedure = gimp_plug_in_procedure_new (GIMP_PDB_PROC_TYPE_INTERNAL, file, NULL);
+-  g_object_unref (file);
+-
+-  procedure->marshal_func = file_gex_load_invoker;
+-
+-  proc = GIMP_PLUG_IN_PROCEDURE (procedure);
+-  proc->menu_label = g_strdup (_("GIMP extension"));
+-  gimp_plug_in_procedure_set_icon (proc, GIMP_ICON_TYPE_ICON_NAME,
+-                                   (const guint8 *) "gimp-plugin",
+-                                   strlen ("gimp-plugin") + 1,
+-                                   NULL);
+-  gimp_plug_in_procedure_set_file_proc (proc, "gex", NULL, "",
+-                                        "20, string, GIMP");
+-  gimp_plug_in_procedure_set_generic_file_proc (proc, TRUE);
+-  gimp_plug_in_procedure_set_mime_types (proc, "image/gimp-x-gex");
+-  gimp_plug_in_procedure_set_handles_remote (proc);
+-
+-  gimp_object_set_static_name (GIMP_OBJECT (procedure), "file-gex-load");
+-  gimp_procedure_set_static_help (procedure,
+-                                  "Loads GIMP extension",
+-                                  "Loads GIMP extension",
+-                                  NULL);
+-  gimp_procedure_set_static_attribution (procedure,
+-                                         "Jehan", "Jehan", "2019");
+-
+-  gimp_procedure_add_argument (procedure,
+-                               gimp_param_spec_enum ("run-mode",
+-                                                     "Dummy Param",
+-                                                     "Dummy parameter",
+-                                                     GIMP_TYPE_RUN_MODE,
+-                                                     GIMP_RUN_INTERACTIVE,
+-                                                     GIMP_PARAM_READWRITE));
+-  gimp_procedure_add_argument (procedure,
+-                               g_param_spec_object ("file",
+-                                                    "File",
+-                                                    "The file to load",
+-                                                    G_TYPE_FILE,
+-                                                    GIMP_PARAM_READWRITE));
+-
+-  gimp_procedure_add_return_value (procedure,
+-                                   gimp_param_spec_string ("extension-id",
+-                                                           "ID of installed extension",
+-                                                           "Identifier of the newly installed extension",
+-                                                           FALSE, TRUE, FALSE, NULL,
+-                                                           GIMP_PARAM_READWRITE));
+-
+-  gimp_plug_in_manager_add_procedure (gimp->plug_in_manager, proc);
+-  g_object_unref (procedure);
+ }
+ 
+ void
+diff --git a/app/file-data/meson.build b/app/file-data/meson.build
+index 9489eda9fb..5fdf498c9b 100644
+--- a/app/file-data/meson.build
++++ b/app/file-data/meson.build
+@@ -1,7 +1,6 @@
+ 
+ libappfiledata_sources = [
+   'file-data-gbr.c',
+-  'file-data-gex.c',
+   'file-data-gih.c',
+   'file-data-pat.c',
+   'file-data.c',
+diff --git a/app/plug-in/gimppluginmanager-restore.c b/app/plug-in/gimppluginmanager-restore.c
+index deecd7dc55..8420f04b53 100644
+--- a/app/plug-in/gimppluginmanager-restore.c
++++ b/app/plug-in/gimppluginmanager-restore.c
+@@ -187,7 +187,6 @@ gimp_plug_in_manager_search (GimpPlugInManager  *manager,
+ {
+   const gchar *path_str;
+   GList       *paths;
+-  GList       *extensions;
+   GList       *iter;
+ 
+ #ifdef G_OS_WIN32
+@@ -214,40 +213,6 @@ gimp_plug_in_manager_search (GimpPlugInManager  *manager,
+     }
+ #endif /* G_OS_WIN32 */
+ 
+-  status_callback (_("Loading extension plug-ins"), "", 0.0);
+-  g_object_get (manager->gimp->extension_manager,
+-                "plug-in-extensions", &extensions,
+-                NULL);
+-  for (iter = extensions; iter; iter = g_list_next (iter))
+-    {
+-      GimpExtension *extension = iter->data;
+-      GFile         *root_folder;
+-      GList         *iter2;
+-
+-      root_folder = g_file_new_for_path (gimp_extension_get_path (extension));
+-      paths       = gimp_extension_get_plug_in_paths (extension);
+-
+-      for (iter2 = paths; iter2; iter2 = iter2->next)
+-        {
+-          GFile *file = iter2->data;
+-
+-          if (gimp_file_is_executable (file))
+-            {
+-              GFileInfo *info;
+-
+-              info = g_file_query_info (file,
+-                                        G_FILE_ATTRIBUTE_TIME_MODIFIED ","
+-                                        G_FILE_ATTRIBUTE_TIME_CHANGED,
+-                                        G_FILE_QUERY_INFO_NONE, NULL, NULL);
+-              gimp_plug_in_manager_add_from_file (manager, file, root_folder,
+-                                                  gimp_plug_in_manager_get_file_time (info));
+-              g_object_unref (info);
+-            }
+-        }
+-
+-      g_object_unref (root_folder);
+-    }
+-
+   status_callback (_("Searching plug-ins"), "", 0.0);
+ 
+   /* Give automatic tests a chance to use plug-ins from the build
+diff --git a/app/widgets/meson.build b/app/widgets/meson.build
+index d182f7763e..d84dfae3eb 100644
+--- a/app/widgets/meson.build
++++ b/app/widgets/meson.build
+@@ -120,8 +120,6 @@ libappwidgets_sources = [
+   'gimperrorconsole.c',
+   'gimperrordialog.c',
+   'gimpexportdialog.c',
+-  'gimpextensionlist.c',
+-  'gimpextensiondetails.c',
+   'gimpfgbgeditor.c',
+   'gimpfgbgview.c',
+   'gimpfiledialog.c',
+diff --git a/devel-docs/meson.build b/devel-docs/meson.build
+index 7dd25ed1ba..234a951148 100644
+--- a/devel-docs/meson.build
++++ b/devel-docs/meson.build
+@@ -8,6 +8,6 @@ mkdb_args_common = [
+   '--name-space=gimp',
+ ]
+ 
+-if gi_docgen.found() and have_gobject_introspection
++if not platform_windows
+   subdir('reference')
+ endif
+diff --git a/libgimp/meson.build b/libgimp/meson.build
+index 06ceea343e..e81e1240be 100644
+--- a/libgimp/meson.build
++++ b/libgimp/meson.build
+@@ -530,7 +530,9 @@ libgimpui_introspectable_files = [
+   libgimpwidgets_introspectable,
+ ]
+ 
+-if meson.is_cross_build() and not get_option('can-crosscompile-gir')
++if platform_windows
++  have_gobject_introspection = false
++elif meson.is_cross_build() and not get_option('can-crosscompile-gir')
+   have_gobject_introspection = false
+   gobject_introspection_warning = '\n      '.join(['',
+     'GObject Introspection is disabled while cross-compiling because',
+diff --git a/meson.build b/meson.build
+index 0c889d6ea3..187bb756cd 100644
+--- a/meson.build
++++ b/meson.build
+@@ -292,7 +292,7 @@ warning_cflags_common = [
+   '-fno-common',
+ 
+   '-Wformat',
+-  '-Wformat-security',
++  '-Wno-format-security',
+   '-Winit-self',
+   '-Wlogical-op',
+   '-Wmissing-declarations',
+@@ -702,7 +702,7 @@ endif
+ # Check for extension support
+ 
+ appstream_minver = '0.16.1'
+-appstream = dependency('appstream', version: '>='+appstream_minver)
++appstream = dependency('appstream', required: false)
+ 
+ libarchive = dependency('libarchive')
+ 
+@@ -1193,7 +1193,7 @@ pygobject_found = ''
+ pygobject_gexiv2_found = false
+ foreach py : py_candidates
+   #Check if PyGobject installation have pycairo (#13105)
+-  python_tmp = pythonmod.find_installation(py, modules: ['gi', 'cairo'], required: false)
++  python_tmp = pythonmod.find_installation(py, required: false)
+   if python_tmp.found() and python_tmp.language_version().version_compare(python3_minver)
+     python = python_tmp
+     #Check if PyGObject installation have minimum version
+@@ -1212,9 +1212,7 @@ foreach py : py_candidates
+                                         '''except (ImportError):''',
+                                         '''    sys.exit(1)''']),
+                                         check: false).returncode() == 0
+-    if pygobject_found.returncode() == 0 and pygobject_found.stdout().strip().version_compare(pygobject_minver) and pygobject_gexiv2_found
+-      break
+-    endif
++    break
+   endif
+ endforeach
+ 
+@@ -1223,11 +1221,6 @@ if not python.found() or not python.language_version().version_compare(python3_m
+ endif
+ message('Found Python @0@'.format(python.language_version()))
+ 
+-if pygobject_found.returncode() != 0 or not pygobject_found.stdout().strip().version_compare(pygobject_minver) or not pygobject_gexiv2_found
+-  error('No suitable PyGObject (with GExiv2 submodule) found. Minimum supported version: @0@'.format(pygobject_minver))
+-endif
+-message('Found PyGObject: @0@'.format(pygobject_found.stdout().strip()))
+-
+ ## Javascript
+ 
+ gjs = find_program('gjs', required: false)
+@@ -1981,15 +1974,11 @@ subdir('libgimpwidgets')
+ subdir('libgimp')
+ 
+ # Executables, plugins
+-subdir('extensions')
+ subdir('modules')
+ subdir('plug-ins')
+ subdir('app')
+ subdir('app-tools')
+ 
+-# Desktop files
+-subdir('desktop')
+-
+ ################################################################################
+ # Make GIMP runnable without being installed for unit-testing or as a build
+ # tool.
+@@ -2007,13 +1996,13 @@ if get_option('debug-self-in-build')
+ endif
+ gimp_run_env.set('GIMP_PYTHON_WITH_GI', python.full_path())
+ 
+-if meson.can_run_host_binaries() and have_gobject_introspection
++if meson.can_run_host_binaries()
+   if enable_console_bin
+     gimp_real_exe = gimpconsole_exe
+   else
+     gimp_real_exe = gimpmain_exe
+   endif
+-  gimp_exe_depends = [gimp_real_exe, libgimp_gir, libgimpui_gir] + plugin_custom_targets
++  gimp_exe_depends = [gimp_real_exe] + plugin_custom_targets
+   gimp_run_env.set('GIMP_SELF_IN_BUILD', gimp_real_exe.full_path())
+ 
+   menu_paths=meson.global_build_root() / 'menus:' + meson.global_source_root() / 'menus'
+@@ -2071,18 +2060,6 @@ if meson.can_run_host_binaries() and have_gobject_introspection
+     gimp_run_env.prepend('GIMP_TEMP_UPDATE_RPATH', libgimpthumb.full_path())
+     gimp_run_env.prepend('GIMP_TEMP_UPDATE_RPATH', libgimpwidgets.full_path())
+   endif
+-else
+-  # Cross-builds require an existing native GIMP installed, unless we
+-  # can run target binaries.
+-  native_gimp_exe = find_program([gimpconsole_exe_name, gimpmain_exe_name],
+-                                 native: true, required: false)
+-
+-  if not native_gimp_exe.found()
+-    error('When cross-compiling, the build requires either an exe_wrapper or a native GIMP installed (@0@ or @1@).'.format(gimpconsole_exe_name, gimpmain_exe_name))
+-  endif
+-
+-  gimp_run_env.set('GIMP_SELF_IN_BUILD', native_gimp_exe.full_path())
+-  gimp_exe_depends = []
+ endif
+ 
+ gimp_exe = find_program('tools'/'in-build-gimp.py')
+@@ -2091,7 +2068,7 @@ gimp_exe = find_program('tools'/'in-build-gimp.py')
+ # Subdirs: part 2
+ 
+ # gimp-data submodule part 2
+-subdir('gimp-data/images/')
++subdir('gimp-data/images/logo')
+ 
+ # Unit testing
+ subdir('app/tests')
+@@ -2276,7 +2253,7 @@ final_message = [
+ '''  Test appdata         @0@'''.format(appstreamcli.found()),
+ '',
+ '''Documentation:''',
+-'''  libgimp API Reference: @0@'''.format(gi_docgen.found() and have_gobject_introspection),
++'''  libgimp API Reference: @0@'''.format(gi_docgen.found()),
+ '',
+ '''Bug report URL: @0@'''.format(bug_report_url),
+ ]
+diff --git a/plug-ins/meson.build b/plug-ins/meson.build
+index 3e28f17306..31762f0dd8 100644
+--- a/plug-ins/meson.build
++++ b/plug-ins/meson.build
+@@ -87,15 +87,6 @@ foreach plugin : complex_plugins_list
+ endforeach
+ 
+ 
+-subdir('python')
+-
+-foreach plugin : python_plugins
+-  if plugin.get('name').startswith('file-')
+-    all_plugins_sources += [ meson.current_source_dir() / 'python' / plugin.get('name') + '.py' ]
+-  endif
+-endforeach
+-
+-
+ #Dynamically created list of supported files with the plugins lists above
+ MIMEtypes_output = run_command(
+   python,
+-- 
+2.50.1 (Apple Git-155)
+

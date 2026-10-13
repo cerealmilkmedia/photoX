@@ -1,0 +1,58 @@
+# For easier quality of life and to avoid disparity between pacakges,
+# KEEP THIS FILE ORDERING SIMILAR to build/windows/all-deps-uni.txt
+
+# BUILD-TIME ONLY DEPS
+gettext|homebrew:gettext \
+gi-docgen|homebrew:gi-docgen \
+gobject-introspection +quartz -x11|homebrew:gobject-introspection \
+libxslt|homebrew:libxslt \
+meson|homebrew:meson \
+perl5 #homebrew uses perl from macOS \
+pkgconfig|homebrew:pkgconf \
+vala -valadoc|homebrew:vala \
+
+# RUNTIME DEPS
+aalib -x11|homebrew:aalib \
+appstream -x11|homebrew:appstream \
+atk|homebrew:at-spi2-core \
+bzip2 #homebrew uses libbz2 from macOS \
+cairo +quartz -x11|homebrew:cairo \
+cfitsio|homebrew:cfitsio \
+fontconfig|homebrew:fontconfig \
+freetype|homebrew:freetype \
+gdk-pixbuf2 +quartz -x11|homebrew:gdk-pixbuf \
+gexiv2|homebrew:gexiv2 \
+ghostscript -x11|homebrew:ghostscript \
+glib2 +quartz -x11|homebrew:glib \
+glib-networking|homebrew:glib-networking \
+graphviz -x11|homebrew:graphviz \
+gtk3 +quartz -x11|homebrew:gtk+3 \ adwaita-icon-theme +quartz -x11|homebrew:adwaita-icon-theme \ shared-mime-info|homebrew:shared-mime-info \
+harfbuzz +quartz -x11|homebrew:harfbuzz \
+iso-codes|homebrew:iso-codes \
+json-glib|homebrew:json-glib \
+lcms2|homebrew:lcms2 \
+libarchive|homebrew:libarchive \
+libheif|homebrew:libheif #homebrew libheif-plugins is bloated with ffmpeg etc \
+libjpeg-turbo|homebrew:libjpeg-turbo \
+libjxl|homebrew:jpeg-xl \
+libmng|homebrew:libmng \
+libmypaint|homebrew:libmypaint \
+libpng|homebrew:libpng \
+librsvg|homebrew:librsvg \
+tiff|homebrew:libtiff \
+webp|homebrew:webp \
+libwmf -x11|homebrew:libwmf \
+maxflow #homebrew rejected maxflow https://github.com/Homebrew/homebrew-core/pull/276186 \
+mypaint-brushes|homebrew:mypaint-brushes \
+openexr|homebrew:openexr \
+openjpeg|homebrew:openjpeg \
+pango +thai +quartz -x11|homebrew:pango \
+poppler +pinentry -pinentry_mac|homebrew:poppler \
+poppler-data \
+|homebrew:python \ py-certifi|homebrew:certifi
+py-gobject3|homebrew:pygobject3 \
+qoi #homebrew rejected qoi https://github.com/Homebrew/homebrew-core/pull/276182 but we install with 1_build-deps-macports.sh \
+SuiteSparse_UMFPACK +accelerate -openblas #homebrew forces non-native GCC/Gfortran for suite-sparse (AMD module)
+#xpm depends on x11
+xz|homebrew:xz
+zlib #homebrew uses libz from macOS

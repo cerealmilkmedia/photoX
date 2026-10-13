@@ -1,0 +1,189 @@
+#!/usr/bin/env pwsh
+
+# Ensure the script work properly
+$ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $false #to ensure error catching as in pre-7.4 PS
+if (-not (Test-Path build\windows) -and -not (Test-Path 1_build-deps-msys2.ps1 -Type Leaf) -or $PSScriptRoot -notlike "*build\windows*")
+  {
+    Write-Host '(ERROR): Script called from wrong dir. Please, read: https://developer.gimp.org/core/setup/build/windows/' -ForegroundColor Red
+    exit 1
+  }
+elseif (Test-Path 1_build-deps-msys2.ps1 -Type Leaf)
+  {
+    Set-Location ..\..
+  }
+if (-not $GITLAB_CI)
+  {
+    if (-not (Get-Command "git" -ErrorAction SilentlyContinue)) { Write-Host '(ERROR): git is required for this script. Please, read: https://developer.gimp.org/core/setup/git/#source-from-git' -ForegroundColor Red; exit 1 }
+
+    $GIT_DEPTH = '1'
+
+    $PARENT_DIR = '\..'
+  }
+
+
+# Install the required (pre-built) packages for babl, GEGL and GIMP
+if (-not $env:VCPKG_ROOT -or (Test-Path "$env:VCPKG_ROOT\vcpkg.exe" -Type Leaf))
+  {
+    $env:VCPKG_ROOT = $(@($(Resolve-Path "${PWD}${PARENT_DIR}\vcpkg" -ErrorAction SilentlyContinue),$env:VCPKG_ROOT) | ?{$_} | select -First 1)
+    if ((Test-Path "$env:VCPKG_ROOT\vcpkg.exe" -Type Leaf) -and -not "$env:VSINSTALLDIR")
+      {
+        Write-Host '(ERROR): MSVC installation not found. Please, install it then run this script from Developer PowerShell.' -ForegroundColor Red; Remove-Item env:VCPKG_ROOT
+        exit 1
+      }
+  }
+if (-not $env:VCPKG_DEFAULT_HOST_TRIPLET -and $env:VCPKG_ROOT)
+  {
+    $env:VCPKG_DEFAULT_HOST_TRIPLET = if ((Get-WmiObject Win32_ComputerSystem).SystemType -like 'ARM64*') { 'arm64-windows' } else { 'x64-windows-release' }
+  }
+
+if (-not $env:MSYS_ROOT -and -not (Test-Path "$env:VCPKG_ROOT\vcpkg.exe" -Type Leaf))
+  {
+    $env:MSYS_ROOT = $(Get-ChildItem HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall -Recurse | ForEach-Object { Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue } | Where-Object { $_.PSObject.Properties.Value -like "*The MSYS2 Developers*" } | ForEach-Object { return "$($_.InstallLocation)" }) -replace '\\','/'
+    if ("$env:MSYS_ROOT" -eq '')
+      {
+        Write-Host '(ERROR): MSYS2 installation not found. Please, install it with: winget install MSYS2.MSYS2' -ForegroundColor Red
+        exit 1
+      }
+  }
+if (-not $env:MSYSTEM_PREFIX -and $env:MSYS_ROOT)
+  {
+    $env:MSYSTEM_PREFIX = if ((Get-WmiObject Win32_ComputerSystem).SystemType -like 'ARM64*') { 'clangarm64' } else { 'clang64' }
+  }
+
+Write-Output "$([char]27)[0Ksection_start:$(Get-Date -UFormat %s -Millisecond 0):deps_install[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies provided by $(if ("$env:VCPKG_ROOT") {'vcpkg'} else {'MSYS2'})"
+if (Test-Path "$env:VCPKG_ROOT\vcpkg.exe" -Type Leaf)
+  {
+    & "$env:VCPKG_ROOT\vcpkg.exe" upgrade --no-dry-run; if ("$LASTEXITCODE" -gt '0') { exit 1 }
+    & "$env:VCPKG_ROOT\vcpkg.exe" install --no-print-usage --recurse (Get-Content build/windows/all-deps-uni.txt | Select-String 'vcpkg:' | ForEach-Object { ($_ -split '\|vcpkg:')[1] }); if ("$LASTEXITCODE" -gt '0') { exit 1 }
+    #Needed for finding perl on CI
+    & "$env:VCPKG_ROOT\vcpkg.exe" remove --recurse aom; $env:VCPKG_DEFAULT_BINARY_CACHE="$env:VCPKG_ROOT/buildtrees/aom"; & "$env:VCPKG_ROOT\vcpkg.exe" install --no-print-usage --recurse 'libheif[aom,hevc,openjpeg]'; Remove-Item env:VCPKG_DEFAULT_BINARY_CACHE
+    #FIXME: appstream and pygobject are missing on vcpkg
+    git apply -v 'build\windows\patches\0001-Disable-some-things-due-to-lack-of-packages.patch'
+  }
+else
+  {
+    powershell -Command { $ProgressPreference = 'SilentlyContinue'; $env:PATH="$env:MSYS_ROOT\usr\bin;$env:PATH"; pacman --noconfirm -Suy }; if ("$LASTEXITCODE" -gt '0') { exit 1 }
+    powershell -Command { $ProgressPreference = 'SilentlyContinue'; $env:PATH="$env:MSYS_ROOT\usr\bin;$env:PATH"; pacman --noconfirm -S --needed (Get-Content build/windows/all-deps-uni.txt | Where-Object { $_ -match 'MINGW_' -and -not $_.Trim().StartsWith('#') } | ForEach-Object { (($_.Split('#')[0].Trim() -split '\|vcpkg:')[0] -replace '\$\{MINGW_PACKAGE_PREFIX\}', $(if ($env:MINGW_PACKAGE_PREFIX) { $env:MINGW_PACKAGE_PREFIX } elseif ($env:MSYSTEM_PREFIX -eq 'clangarm64') { 'mingw-w64-clang-aarch64' } else { 'mingw-w64-clang-x86_64' })) }) }; if ("$LASTEXITCODE" -gt '0') { exit 1 }
+  }
+#See: https://gitlab.gnome.org/GNOME/gimp/-/work_items/14145
+if (-not (Get-Command win_flex -ErrorAction SilentlyContinue)) { $winflexbison_tag = (Invoke-RestMethod 'https://api.github.com/repos/lexxmark/winflexbison/releases/latest').tag_name -replace 'v',''; Invoke-WebRequest "https://github.com/lexxmark/winflexbison/releases/download/v${winflexbison_tag}/win_flex_bison-${winflexbison_tag}.zip" -UseBasicParsing -OutFile ${PWD}${PARENT_DIR}\winflexbison.zip; Expand-Archive ${PWD}${PARENT_DIR}\winflexbison.zip ${PWD}${PARENT_DIR}\winflexbison; $env:PATH = "$(Resolve-Path ${PWD}${PARENT_DIR}\winflexbison);$env:PATH" }
+Write-Output "$([char]27)[0Ksection_end:$(Get-Date -UFormat %s -Millisecond 0):deps_install$([char]13)$([char]27)[0K"
+foreach ($dir in "$env:VCPKG_ROOT/installed/$env:VCPKG_DEFAULT_HOST_TRIPLET/bin", "$env:MSYS_ROOT/$env:MSYSTEM_PREFIX/bin") { if (Test-Path $dir) { if (Get-ChildItem -Path "$dir\*" -Include "X11*.dll","libX11*.dll","msys-*.dll" -ErrorAction SilentlyContinue) { Write-Host -ForegroundColor Yellow "(WARNING): X11 or CYGWIN is installed on Windows. Please remove the culprit from all-deps-uni.txt or report to $(if ("$env:VCPKG_ROOT") {'vcpkg'} else {'MSYS2'})" } } }
+
+
+# Prepare env
+$GIMP_DIR = $PWD
+Set-Location ${GIMP_DIR}${PARENT_DIR}
+
+if (-not $GIMP_PREFIX)
+  {
+    $GIMP_PREFIX = "$PWD\_install"
+  }
+Invoke-Expression ((Get-Content $GIMP_DIR\.gitlab-ci.yml | Select-String 'win_environ\[' -Context 0,9) -replace '> ','' -replace '- ','')
+
+
+# Build babl and GEGL
+function self_build ([string]$repo, [array]$branch, [array]$patches, [array]$options)
+  {
+    $dep = ($repo -split "/")[-1] -replace '.git',''
+    Write-Output "$([char]27)[0Ksection_start:$(Get-Date -UFormat %s -Millisecond 0):${dep}_build[collapsed=true]$([char]13)$([char]27)[0KBuilding $dep"
+    ## Make sure that the deps repos are fine
+    if (($GIMP_CI_WIN_INSTALLER -match '[1-9]' -or $GIMP_CI_MS_STORE -match '[1-9]') -and -not $CI_COMMIT_TAG -and $CI_PIPELINE_SOURCE -ne 'schedule')
+      {
+        #needed to avoid broken GIMP revisions with untagged babl/gegl
+        Write-Host "(ERROR): revision is set but no GIMP tag found. Please, tag the revision." -ForegroundColor red
+        exit 1
+      }
+    if (-not (Test-Path $dep))
+      {
+        ### For tagged jobs (i.e. release or test jobs for upcoming releases), use the
+        ### last tag. Otherwise use the default branch's HEAD.
+        if (($repo -like '*babl*' -or $repo -like '*gegl*') -and $CI_COMMIT_TAG)
+          {
+            $tag_branch = (git ls-remote --exit-code --refs --sort=version:refname $repo refs/tags/$($dep.ToUpper())_[0-9]*_[0-9]*_[0-9]* | Select-Object -Last 1).Split('refs/')[-1]
+          }
+        else
+          {
+            $tag_branch = if ($null -eq $branch -or $branch -eq '' -or $branch -like '*.patch*' -or $branch -like '-*') { 'master' } else { $branch }
+          }
+        Write-Output "Using tag/branch of ${dep}: ${tag_branch}"
+        git clone --branch=${tag_branch} --depth $GIT_DEPTH $repo
+      }
+    else
+      {
+        git -C "$dep" pull
+      }
+    Set-Location $dep
+    if ($branch -like "*.patch*" -or $patches -like "*.patch*")
+      {
+        ### This allows to add some minor patch on a dependency without having a proper new release.
+        foreach ($patch in $(if ($branch -like '*.patch*') { $branch } else { $patches }))
+          {
+            if ("$patch" -notlike "http*")
+              {
+                git apply -v $GIMP_DIR\$patch
+              }
+            else
+              {
+                $downloaded_patch = "$PWD\$(Split-Path $patch -Leaf)"
+                #(We need to ensure that TLS 1.2 is enabled because of some runners)
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                #We need to use .NET directly since Invoke-WebRequest does not work with GitHub
+                Add-Type -AssemblyName System.Net.Http; $client = [System.Net.Http.HttpClient]::new();
+                $response = $client.GetAsync("$patch").Result; [System.IO.File]::WriteAllBytes("$downloaded_patch", $response.Content.ReadAsByteArrayAsync().Result)
+                git apply -v $downloaded_patch
+                Remove-item $downloaded_patch
+              }
+          }
+      }
+
+    ## Configure and/or build
+    if (-not (Test-Path _build-$(@($env:VCPKG_DEFAULT_HOST_TRIPLET,$env:MSYSTEM_PREFIX) | ?{$_} | select -First 1)\build.ninja -Type Leaf))
+      {
+        if ((Test-Path meson.build -Type Leaf) -and -not (Test-Path CMakeLists.txt -Type Leaf))
+          {
+            #babl and GEGL already auto install .pdb but we don't know about other eventual deps
+            if (-not "$env:VCPKG_ROOT")
+              {
+                if ("$dep" -ne 'babl' -and "$dep" -ne 'gegl')
+                  {
+                    Add-Content meson.build "meson.add_install_script(find_program('$("$GIMP_DIR".Replace('\','/'))/tools/meson_install_win_debug.py'))"
+                  }
+                $clang_opts_meson=@('-Dc_args=-"fansi-escape-codes -gcodeview"', '-Dcpp_args=-"fansi-escape-codes -gcodeview"', '-Dc_link_args="-Wl,--pdb="', '-Dcpp_link_args="-Wl,--pdb="')
+              }
+            meson setup _build-$(@($env:VCPKG_DEFAULT_HOST_TRIPLET,$env:MSYSTEM_PREFIX) | ?{$_} | select -First 1) -Dprefix="$GIMP_PREFIX" $PKGCONF_RELOCATABLE_OPTION $WARN_AS_ERROR_ON_CI `
+                        -Dbuildtype=debugoptimized $clang_opts_meson `
+                        $(if ($branch -like '-*') { $branch } elseif ($patches -like '-*') { $patches } else { $options });
+          }
+        elseif (Test-Path CMakeLists.txt -Type Leaf)
+          {
+            if (-not "$env:VCPKG_ROOT")
+              {
+                Add-Content CMakeLists.txt "install(CODE `"execute_process(COMMAND `${Python3_EXECUTABLE`} $("$GIMP_DIR".Replace('\','/'))/tools/meson_install_win_debug.py`)`")"
+                $clang_opts_cmake=@('-DCMAKE_C_FLAGS="-gcodeview"', '-DCMAKE_CXX_FLAGS="-gcodeview"', '-DCMAKE_EXE_LINKER_FLAGS="-Wl,--pdb="', '-DCMAKE_SHARED_LINKER_FLAGS="-Wl,--pdb="', '-DCMAKE_MODULE_LINKER_FLAGS="-Wl,--pdb="')
+              }
+            cmake -G Ninja -B _build-$(@($env:VCPKG_DEFAULT_HOST_TRIPLET,$env:MSYSTEM_PREFIX) | ?{$_} | select -First 1) -DCMAKE_INSTALL_PREFIX="$GIMP_PREFIX" `
+                  -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_COLOR_DIAGNOSTICS=ON $clang_opts_cmake `
+                  $(if ($branch -like '-*') { $branch } elseif ($patches -like '-*') { $patches } else { $options });
+          }
+        if ("$LASTEXITCODE" -gt '0') { exit 1 }
+      }
+    Set-Location _build-$(@($env:VCPKG_DEFAULT_HOST_TRIPLET,$env:MSYSTEM_PREFIX) | ?{$_} | select -First 1)
+    ninja; if ("$LASTEXITCODE" -gt '0') { exit 1 }
+    ninja install; if ("$LASTEXITCODE" -gt '0') { exit 1 }
+    Set-Location ../..
+    Write-Output "$([char]27)[0Ksection_end:$(Get-Date -UFormat %s -Millisecond 0):${dep}_build$([char]13)$([char]27)[0K"
+  }
+
+if ($env:VCPKG_ROOT)
+  {
+    self_build https://gitlab.gnome.org/GNOME/babl @('-Denable-gir=false')
+    self_build https://gitlab.gnome.org/GNOME/gegl @('-Dintrospection=false')
+    exit 0
+  }
+self_build https://gitlab.gnome.org/GNOME/babl
+self_build https://gitlab.gnome.org/GNOME/gegl @('-Ddocs=false')
+self_build https://github.com/Exiv2/exiv2 "v0.28.8" @('https://github.com/Exiv2/exiv2/pull/3361.patch') @('-DCMAKE_DLL_NAME_WITH_SOVERSION=ON', '-DEXIV2_BUILD_EXIV2_COMMAND=OFF', '-DEXIV2_ENABLE_VIDEO=OFF')
+
+Set-Location $GIMP_DIR
